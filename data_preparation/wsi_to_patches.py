@@ -11,7 +11,6 @@ import shutil
 import warnings
 import tempfile
 import subprocess
-import linecache
 
 from multiprocessing import Pool
 
@@ -20,7 +19,7 @@ from tqdm.auto import tqdm
 import tifffile
 
 sys.path.append('..')
-from lib.utils import init_script, array2patches
+from lib.utils import init_script, array2patches, get_exception
 
 
 init_script(f"{__file__}.log")
@@ -40,17 +39,6 @@ threads = 6
 
 
 def process_wsi(df_row):
-    def get_exception():
-        _, exc_obj, tb = sys.exc_info()
-        f = tb.tb_frame
-        lineno = tb.tb_lineno
-        filename = f.f_code.co_filename
-        linecache.checkcache(filename)
-        line = linecache.getline(filename, lineno, f.f_globals)
-        return 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno,
-                                                            line.strip(),
-                                                            exc_obj)
-
     rows = []
     img_id = df_row.image_id
 
