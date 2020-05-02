@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import KFold, train_test_split
@@ -31,6 +32,9 @@ gleason_scores = {
 }
 
 gleason_score_nums = len(gleason_scores) - 1
+
+patches_rgb_mean_av1 = np.array([0.88, 0.76, 0.84])[None, :, None, None]
+patches_rgb_std_av1 = np.array([0.15, 0.26, 0.18])[None, :, None, None]
 
 
 def get_train_test_img_ids_split(test_size=0.2, random_state=42):
