@@ -20,20 +20,16 @@ import tifffile
 
 sys.path.append('..')
 from lib.utils import init_script, array2patches, get_exception
+from lib.datasets import (wsi_csv_path, wsi_masks_path, wsi_path,
+                          patches_path, patches_csv_path, patch_sz)
 
 
 init_script(f"{__file__}.log")
 
 TIFFTILES2JPG_BIN = '../../tiff/tifftiles2jpg/tifftiles2jpg'
 
-wsi_path = "/mnt/HDDData/pdata/train_images/"
-wsi_masks_path = "/mnt/HDDData/pdata/train_label_masks/"
-wsi_csv_path = "/mnt/HDDData/pdata/train.csv"
 
-patches_path = "/mnt/SSDData/pdata/processed/patches_512/"
-patches_csv_path = "/mnt/SSDData/pdata/processed/patches_512.csv"
 have_masks = True
-patch_sz = 512
 
 threads = 6
 
