@@ -74,10 +74,12 @@ class PatchesDataset(torch.utils.data.Dataset):
 
         labes = np.zeros(actual_lbl_nums, dtype=np.float32)
         for i in range(max_lbl_nums if row.data_provider == 'radboud' else 3):
-            labes[get_actual_lbl_num(row.data_provider, i)] = getattr(row, f'label{i}')  # row[f'label{i}']
+            labes[get_actual_lbl_num(row.data_provider, i)] =\
+                getattr(row, f'label{i}')  # row[f'label{i}']
 
+        # mask.T.astype(np.int64)
         return (img.transpose([2, 0, 1]).astype(np.float32),
-                0 if mask is None else mask.astype(np.int64),  # mask.T.astype(np.int64)
+                0 if mask is None else mask.astype(np.int64),
                 labes.astype(np.float32),
                 get_provider_num(row.data_provider),
                 int(row.isup_grade), get_g_score_num(row.gleason_score))
