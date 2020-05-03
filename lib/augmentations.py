@@ -26,6 +26,12 @@ _aug_v1 = alb.Compose([
 ], p=0.9)
 
 
+def augment_empty(img, mask):
+    img = img / 255
+
+    return img, mask
+
+
 def _augment(img, mask, aug):
     augmented = aug(image=img, mask=mask)
 
