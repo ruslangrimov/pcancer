@@ -31,6 +31,11 @@ gleason_scores = {
     '5+5': 9
 }
 
+data_providers = {
+    'radboud': 0,
+    'karolinska': 1
+}
+
 gleason_score_nums = len(gleason_scores) - 1
 
 patches_rgb_mean_av1 = np.array([0.88, 0.76, 0.84])[None, :, None, None]

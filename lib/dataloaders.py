@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .datasets import (patches_path, patches_csv_path, max_lbl_nums,
-                       gleason_scores, actual_lbl_nums)
+                       gleason_scores, actual_lbl_nums, data_providers)
 
 
 def get_actual_lbl_num(data_provider, lbl):
@@ -14,7 +14,7 @@ def get_actual_lbl_num(data_provider, lbl):
 
 
 def get_provider_num(data_provider):
-    return 0 if data_provider == 'radboud' else 1
+    return data_providers[data_provider]
 
 
 def get_g_score_num(score):
