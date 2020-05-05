@@ -120,30 +120,46 @@ class PatchesModuleV1(GeneralModule):
         self.log_train_every_batch = log_train_every_batch
 
         self.dec_loss = nn.MSELoss()
-        self.mask_loss = SmoothLoss(nn.KLDivLoss(), smoothing=0.2,
+        mask_smoothing = self.hparams['loss']['mask_smoothing']
+        self.mask_loss = SmoothLoss(nn.KLDivLoss(), smoothing=mask_smoothing,
                                     one_hot_target=True)
-        self.lbl_loss = SmoothLoss(nn.KLDivLoss(), smoothing=0.2,
+        label_smoothing = self.hparams['loss']['label_smoothing']
+        self.lbl_loss = SmoothLoss(nn.KLDivLoss(), smoothing=label_smoothing,
                                    one_hot_target=False)
 
-        self.loss_weights = self.hparams['loss_weights']
+        self.loss_weights = self.hparams['loss']['weights']
 
         self.rgb_mean = torch.tensor(0.0, dtype=torch.float32)
         self.rgb_std = torch.tensor(1.0, dtype=torch.float32)
 
     def _loss(self, o_masks, o_labels, o_imgs, masks, labels, imgs, n_imgs,
               provider):
+        def ls(x):
+            return torch.log_softmax(x, dim=1)
+
         pr0_idx = provider == 0
         pr1_idx = provider == 1
 
-        dec_loss = self.dec_loss(o_imgs, imgs)
+        if self.loss_weights['dec'] > 0:
+            dec_loss = self.dec_loss(o_imgs, imgs)
+        else:
+            dec_loss = 0
 
-        mask_loss = (self.mask_loss(o_masks[pr0_idx, :6], masks[pr0_idx]) +
-                     self.mask_loss(o_masks[pr1_idx, -3:], masks[pr1_idx]-6))
+        if self.loss_weights['mask'] > 0:
+            mask_loss = (self.mask_loss(ls(o_masks[pr0_idx, :6]),
+                                        masks[pr0_idx]) +
+                         self.mask_loss(ls(o_masks[pr1_idx, -3:]),
+                                        masks[pr1_idx]-6))
+        else:
+            mask_loss = 0
 
-        label_loss = (self.lbl_loss(o_labels[pr0_idx, :6],
-                                    labels[pr0_idx, :6]) +
-                      self.lbl_loss(o_labels[pr1_idx, -3:],
-                                    labels[pr1_idx, -3:]))
+        if self.loss_weights['label'] > 0:
+            label_loss = (self.lbl_loss(ls(o_labels[pr0_idx, :6]),
+                                        labels[pr0_idx, :6]) +
+                          self.lbl_loss(ls(o_labels[pr1_idx, -3:]),
+                                        labels[pr1_idx, -3:]))
+        else:
+            label_loss = 0
 
         loss = (self.loss_weights['dec'] * dec_loss +
                 self.loss_weights['mask'] * mask_loss +
@@ -156,27 +172,38 @@ class PatchesModuleV1(GeneralModule):
         b = imgs.shape[0]
         n_imgs = imgs - self.rgb_mean / self.rgb_std
 
-        o_masks, o_labels, o_imgs = self(n_imgs)
+        if self.loss_weights['dec'] > 0 and self.loss_weights['label'] > 0:
+            o_masks, o_labels, o_imgs = self(n_imgs)
+        else:
+            o_labels, o_imgs = None, None
+            o_masks = self(n_imgs)[0]
 
         loss, dec_loss, mask_loss, label_loss =\
             self._loss(o_masks, o_labels, o_imgs, masks, labels, imgs, n_imgs,
                        provider)
 
-        lbl_acc = self._accuracy(o_labels, labels.argmax(dim=1))
-        mask_acc = self._accuracy(o_masks.view(b, actual_lbl_nums, -1),
-                                  masks.view(b, -1))
+        if self.loss_weights['label'] > 0:
+            lbl_acc = self._accuracy(o_labels, labels.argmax(dim=1))
+        else:
+            lbl_acc = 0
+
+        if self.loss_weights['mask'] > 0:
+            mask_acc = self._accuracy(o_masks.view(b, actual_lbl_nums, -1),
+                                      masks.view(b, -1))
+        else:
+            mask_acc = 0
 
         lr = self.optimizer.param_groups[0]['lr']
 
         pr = '' if is_train else 'val_'
 
         log_dict = {
-            pr+'loss': loss.item(),
-            pr+'dec_loss': dec_loss.item(),
-            pr+'mask_loss': mask_loss.item(),
-            pr+'label_loss': label_loss.item(),
-            pr+'lbl_acc': lbl_acc.item(),
-            pr+'mask_acc': mask_acc.item(),
+            pr+'loss': float(loss),
+            pr+'dec_loss': float(dec_loss),
+            pr+'mask_loss': float(mask_loss),
+            pr+'label_loss': float(label_loss),
+            pr+'lbl_acc': float(lbl_acc),
+            pr+'mask_acc': float(mask_acc),
             pr+'lr': lr
         }
 

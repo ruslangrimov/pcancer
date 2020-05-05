@@ -7,7 +7,7 @@ from segmentation_models_pytorch.unet import Unet
 from segmentation_models_pytorch.unet.decoder import DecoderBlock
 
 
-def get_model(classes):
+def get_model(classes, decoder=True, labels=True):
     class AutoDecoder(nn.Module):
         def __init__(
                 self,
@@ -45,27 +45,30 @@ def get_model(classes):
         decoder_output = self.decoder(*features)
         masks = self.segmentation_head(decoder_output)
 
-        out = masks
+        out = (masks,)
 
         if self.classification_head is not None:
             labels = self.classification_head(features[-1])
-            out = (masks, labels)
+            out = out + (labels,)
 
         if self.autodecoder is not None:
             decoded = self.autodecoder(features[-1])
-            out = (masks, labels, decoded)
+            out = out + (decoded,)
 
         return ((features[-1],) if return_features else ()) + out
 
     model = Unet('resnet18', encoder_weights=None,
-                 activation='logsoftmax',
+                 activation=None,
                  classes=classes,
                  aux_params={
                      'classes': classes,
-                     'activation': 'logsoftmax'})
+                     'activation': None} if labels else None)
 
     model.forward = types.MethodType(forward, model)
     channels = model.encoder.out_channels
-    model.autodecoder = AutoDecoder(channels)
+    if decoder:
+        model.autodecoder = AutoDecoder(channels)
+    else:
+        model.autodecoder = None
 
     return model
