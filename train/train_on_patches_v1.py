@@ -26,8 +26,7 @@ steps_in_epoh = 1
 epochs = 2
 # warmup_epochs = 1
 warmup_epochs = 0
-# warmup_steps = 3000
-warmup_steps = 30
+warmup_steps = 3000
 batch_size = 60
 hparams = {
     'batch_size': batch_size,
@@ -48,10 +47,14 @@ hparams = {
         },
         'interval': 'step'
     },
-    'loss_weights': {
-        'dec': 1/3,
-        'mask': 1/3,
-        'label': 1/3
+    'loss': {
+        'weights': {
+            'dec': 100,
+            'mask': 5,
+            'label': 0.3
+        },
+        'mask_smoothing': 0.1,
+        'label_smoothing': 0.1
     },
     # 'warmup_epochs': warmup_epochs,
     'warmup_steps': warmup_steps,
