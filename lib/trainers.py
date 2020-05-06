@@ -145,21 +145,27 @@ class PatchesModuleV1(GeneralModule):
         else:
             dec_loss = 0
 
+        mask_loss = 0
         if self.loss_weights['mask'] > 0:
-            mask_loss = (self.mask_loss(ls(o_masks[pr0_idx, :6]),
-                                        masks[pr0_idx]) +
-                         self.mask_loss(ls(o_masks[pr1_idx, -3:]),
-                                        masks[pr1_idx]-6))
-        else:
-            mask_loss = 0
+            if pr0_idx.any():
+                mask_loss = mask_loss +\
+                    self.mask_loss(ls(o_masks[pr0_idx, :6]),
+                                   masks[pr0_idx])
+            if pr1_idx.any():
+                mask_loss = mask_loss +\
+                    self.mask_loss(ls(o_masks[pr1_idx, -3:]),
+                                   masks[pr1_idx]-6)
 
+        label_loss = 0
         if self.loss_weights['label'] > 0:
-            label_loss = (self.lbl_loss(ls(o_labels[pr0_idx, :6]),
-                                        labels[pr0_idx, :6]) +
-                          self.lbl_loss(ls(o_labels[pr1_idx, -3:]),
-                                        labels[pr1_idx, -3:]))
-        else:
-            label_loss = 0
+            if pr0_idx.any():
+                label_loss = label_loss +\
+                    self.lbl_loss(ls(o_labels[pr0_idx, :6]),
+                                  labels[pr0_idx, :6])
+            if pr1_idx.any():
+                label_loss = label_loss +\
+                    self.lbl_loss(ls(o_labels[pr1_idx, -3:]),
+                                  labels[pr1_idx, -3:])
 
         loss = (self.loss_weights['dec'] * dec_loss +
                 self.loss_weights['mask'] * mask_loss +
