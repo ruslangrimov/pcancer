@@ -75,4 +75,6 @@ def get_model(classes, decoder=True, labels=True, segmentation=True,
     else:
         model.autodecoder = None
 
+    model.segmentation = segmentation
+
     return model
