@@ -7,7 +7,8 @@ from segmentation_models_pytorch.unet import Unet
 from segmentation_models_pytorch.unet.decoder import DecoderBlock
 
 
-def get_model(classes, decoder=True, labels=True):
+def get_model(classes, decoder=True, labels=True, segmentation=True,
+              mask_activation=None, label_activation=None):
     class AutoDecoder(nn.Module):
         def __init__(
                 self,
@@ -42,10 +43,13 @@ def get_model(classes, decoder=True, labels=True):
     def forward(self, x, return_features=False):
         """Sequentially pass `x` trough model`s encoder, decoder and heads"""
         features = self.encoder(x)
-        decoder_output = self.decoder(*features)
-        masks = self.segmentation_head(decoder_output)
 
-        out = (masks,)
+        out = ()
+
+        if self.segmentation:
+            decoder_output = self.decoder(*features)
+            masks = self.segmentation_head(decoder_output)
+            out = out + (masks,)
 
         if self.classification_head is not None:
             labels = self.classification_head(features[-1])
@@ -58,11 +62,11 @@ def get_model(classes, decoder=True, labels=True):
         return ((features[-1],) if return_features else ()) + out
 
     model = Unet('resnet18', encoder_weights=None,
-                 activation=None,
+                 activation=mask_activation,
                  classes=classes,
                  aux_params={
                      'classes': classes,
-                     'activation': None} if labels else None)
+                     'activation': label_activation} if labels else None)
 
     model.forward = types.MethodType(forward, model)
     channels = model.encoder.out_channels
