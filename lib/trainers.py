@@ -170,7 +170,7 @@ class PatchesModuleV1(GeneralModule):
     def step(self, batch, batch_idx, is_train):
         imgs, masks, labels, provider, isup_grade, g_score = batch
         b = imgs.shape[0]
-        n_imgs = imgs - self.rgb_mean / self.rgb_std
+        n_imgs = (imgs - self.rgb_mean) / self.rgb_std
 
         if self.loss_weights['dec'] > 0 and self.loss_weights['label'] > 0:
             o_masks, o_labels, o_imgs = self(n_imgs)
