@@ -1,3 +1,6 @@
+import torch
+from torch import nn
+
 import sys
 import logging
 from io import StringIO
@@ -60,3 +63,46 @@ def array2patches(x, p_sz):
     patches = np.moveaxis(patches, 0, -1)
 
     return patches
+
+
+def get_pretrained_model(get_model_fn, fn_args, checkpoint, device,
+                         encoder_only=True):
+    tmp = torch.load(checkpoint, map_location=device)
+
+    module = nn.Sequential()
+    model = get_model_fn(**fn_args)
+    module.add_module('model', model)
+    module.to(device)
+    module.load_state_dict(tmp['state_dict'])
+
+    if encoder_only:
+        model.segmentation = False
+        model.classification_head = None
+        model.autodecoder = None
+
+    module.eval()
+
+    return model
+
+
+def get_features(imgs, model, device, rgb_mean, rgb_std,
+                 features_batch_size=512):
+    model.eval()
+
+    imgs = imgs if isinstance(imgs, torch.Tensor) else torch.from_numpy(imgs)
+    imgs = imgs.to(device)
+    if rgb_mean is not None or rgb_std is not None:
+        n_imgs = (imgs - rgb_mean) / rgb_std
+    else:
+        n_imgs = imgs
+
+    b_features = []
+    for b in range(0, n_imgs.shape[0], features_batch_size):
+        with torch.no_grad():
+            features, *_ = model(n_imgs[b:b+features_batch_size],
+                                 return_features=True)
+            b_features.append(features)
+
+    features = torch.cat(b_features, dim=0)
+
+    return features.cpu()
