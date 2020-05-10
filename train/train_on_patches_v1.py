@@ -10,7 +10,8 @@ from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 sys.path.append('..')
 from lib.dataloaders import PatchesDataset
 from lib.datasets import (actual_lbl_nums, get_train_test_img_ids_split,
-                          patches_rgb_mean_av1, patches_rgb_std_av1)
+                          patches_rgb_mean_av1, patches_rgb_std_av1,
+                          patches_csv_path, patches_clean90_csv_path)
 from lib.trainers import PatchesModuleV1
 from lib.augmentations import augment_empty, augment_v1
 from lib.utils import init_script
@@ -23,7 +24,7 @@ logging.info("Started")
 
 steps_in_epoh = 1
 
-epochs = 2
+epochs = 3
 # warmup_epochs = 1
 warmup_epochs = 0
 warmup_steps = 3000
@@ -31,7 +32,10 @@ batch_size = 60
 hparams = {
     'batch_size': batch_size,
     'learning_rate': 0.1 * batch_size / 256,
-    'dataset': {'scale': 0.5},
+    'dataset': {
+        'scale': 0.5,
+        'csv_path': patches_clean90_csv_path
+    },
     'optimizer': {
         'name': 'SGD',
         'params': {
@@ -72,7 +76,9 @@ train_img_ids, test_img_ids = get_train_test_img_ids_split()
 # test_img_ids = random.sample(test_img_ids, 10)
 
 train_loader = torch.utils.data.DataLoader(
-    PatchesDataset(train_img_ids, transform=augment_v1,
+    PatchesDataset(train_img_ids,
+                   csv_path=hparams['dataset']['csv_path'],
+                   transform=augment_v1,
                    scale=hparams['dataset']['scale'],
                    load_masks=True),
     batch_size=hparams['batch_size'], shuffle=True,
@@ -80,7 +86,9 @@ train_loader = torch.utils.data.DataLoader(
 )
 
 val_loader = torch.utils.data.DataLoader(
-    PatchesDataset(test_img_ids, transform=augment_empty,
+    PatchesDataset(test_img_ids,
+                   csv_path=hparams['dataset']['csv_path'],
+                   transform=augment_empty,
                    scale=hparams['dataset']['scale'],
                    load_masks=True),
     batch_size=hparams['batch_size'], shuffle=False,
