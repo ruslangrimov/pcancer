@@ -6,10 +6,11 @@ import logging
 from io import StringIO
 import traceback
 import linecache
+import importlib
 
 import numpy as np
 
-# Utils
+# OS utils
 
 
 def get_exception():
@@ -65,6 +66,9 @@ def array2patches(x, p_sz):
     return patches
 
 
+# Training utils
+
+
 def get_pretrained_model(get_model_fn, fn_args, checkpoint, device,
                          encoder_only=True):
     tmp = torch.load(checkpoint, map_location=device)
@@ -106,3 +110,28 @@ def get_features(imgs, model, device, rgb_mean, rgb_std,
     features = torch.cat(b_features, dim=0)
 
     return features.cpu()
+
+
+def get_module_attr(full_name):
+    if isinstance(full_name, str):
+        mn = full_name.split('.')
+        mod = importlib.import_module('.'.join(mn[:-1]))
+        attr = getattr(mod, mn[-1])
+    else:
+        attr = full_name  # it already is an object
+
+    return attr
+
+
+def call_function(fn):
+    if isinstance(fn, str):
+        full_name, params = fn, {}
+    elif isinstance(fn, list) or isinstance(fn, tuple):
+        full_name = fn[0]
+        params = fn[1] if len(fn) > 1 else {}
+    elif isinstance(fn, dict):
+        full_name, params = fn['name'], fn['params']
+
+    function = get_module_attr(full_name)
+
+    return function(**params)
