@@ -150,25 +150,49 @@ class WSIPatchesDatasetRaw(torch.utils.data.Dataset):
                 int(isup_grade), get_g_score_num(gleason_score))
 
 
+class WSIPatchesDummyDataloader():
+    def __init__(self, batch_path, precalc_epochs,
+                 shuffle=False):
+        self.batch_path = batch_path
+        self.epoch = 0
+        self.precalc_epochs = precalc_epochs
+        self.shuffle = shuffle
+
+        batch_path = self.batch_path.format(self.epoch % 10)
+        self.len = len(os.listdir(batch_path))
+
+    def __len__(self):
+        return self.len
+
+    def __iter__(self):
+        return self.produce_batches()
+
+    def produce_batches(self):
+        batch_path = self.batch_path.format(self.epoch % self.precalc_epochs)
+        idxs = list(range(len(os.listdir(batch_path))))
+
+        if self.shuffle:
+            random.shuffle(idxs)
+
+        for idx in idxs:
+            batch = torch.load(os.path.join(batch_path, f"batch{idx}.pth"),
+                               map_location='cpu')
+
+            yield batch
+
+        self.epoch += 1
+
+
 class WSIPatchesDataloader():
     def __init__(self, dataset, get_features_fn, features_shape,
                  batch_size=1, shuffle=False, num_workers=0, max_len=300):
         self.dataset = dataset
         self.get_features_fn = get_features_fn
+        self.features_shape = features_shape
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.num_workers = num_workers
         self.max_len = max_len
-
-        self.b_features = torch.zeros((self.batch_size, max_len,) +
-                                      features_shape,
-                                      dtype=torch.float32)
-        self.b_ys = torch.zeros((self.batch_size, max_len), dtype=torch.int64)
-        self.b_xs = torch.zeros((self.batch_size, max_len), dtype=torch.int64)
-        self.b_provider = torch.zeros((self.batch_size), dtype=torch.int64)
-        self.b_isup_grade = torch.zeros((self.batch_size), dtype=torch.int64)
-        self.b_gleason_score = torch.zeros((self.batch_size),
-                                           dtype=torch.int64)
 
     def __len__(self):
         return math.ceil(len(self.dataset) / self.batch_size)
@@ -177,6 +201,8 @@ class WSIPatchesDataloader():
         return self.produce_batches()
 
     def produce_batches(self):
+        # print('!!!!init!!!!')
+
         def process_item(idx):
             item_data = self.dataset[idx]
             return item_data
@@ -185,15 +211,27 @@ class WSIPatchesDataloader():
             for a in batch:
                 a.fill_(-1)
 
+        def clone_batch(actual_batch_size):
+            return [a[:actual_batch_size].clone() for a in batch]
+
         idxs = list(range(len(self.dataset)))
 
         if self.shuffle:
             random.shuffle(idxs)
 
-        max_len = self.max_len
+        max_len, batch_size = self.max_len, self.batch_size
 
-        batch = [self.b_features, self.b_ys, self.b_xs, self.b_provider,
-                 self.b_isup_grade, self.b_gleason_score]
+        b_features = torch.zeros((batch_size, max_len,) +
+                                 self.features_shape,
+                                 dtype=torch.float32)
+        b_ys = torch.zeros((batch_size, max_len), dtype=torch.int64)
+        b_xs = torch.zeros((batch_size, max_len), dtype=torch.int64)
+        b_provider = torch.zeros((batch_size), dtype=torch.int64)
+        b_isup_grade = torch.zeros((batch_size), dtype=torch.int64)
+        b_gleason_score = torch.zeros((batch_size), dtype=torch.int64)
+
+        batch = [b_features, b_ys, b_xs, b_provider, b_isup_grade,
+                 b_gleason_score]
 
         clean_batch()
 
@@ -203,24 +241,26 @@ class WSIPatchesDataloader():
                 imgs, ys, xs, provider, isup_grade, gleason_score = item_data
                 features = self.get_features_fn(imgs)
 
-                b_iter = c_iter % self.batch_size
+                b_iter = c_iter % batch_size
                 p = ys.shape[0]
 
-                self.b_features[b_iter, :p] = features[:max_len]
-                self.b_ys[b_iter, :p] = torch.from_numpy(ys)[:max_len]
-                self.b_xs[b_iter, :p] = torch.from_numpy(xs)[:max_len]
-                self.b_provider[b_iter] = provider
-                self.b_isup_grade[b_iter] = isup_grade
-                self.b_gleason_score[b_iter] = gleason_score
+                b_features[b_iter, :p] = features[:max_len]
+                b_features[b_iter, p:].fill_(0)
+                b_ys[b_iter, :p] = torch.from_numpy(ys)[:max_len]
+                b_xs[b_iter, :p] = torch.from_numpy(xs)[:max_len]
+                b_provider[b_iter] = provider
+                b_isup_grade[b_iter] = isup_grade
+                b_gleason_score[b_iter] = gleason_score
 
-                if (c_iter + 1) % self.batch_size == 0:
+                if (c_iter + 1) % batch_size == 0:
                     # process batch
-                    yield batch
-
-                    # clean batch data
+                    # print(f"c_iter {c_iter}")
+                    yield clone_batch(batch_size)
                     clean_batch()
 
                 c_iter += 1
 
-        if c_iter % self.batch_size != 0:
-            yield [a[:c_iter % self.batch_size] for a in batch]
+        if c_iter % batch_size != 0:
+            # print(f"c_iter last {c_iter}, {(c_iter % batch_size)}")
+            yield clone_batch(c_iter % batch_size)
+            clean_batch()
