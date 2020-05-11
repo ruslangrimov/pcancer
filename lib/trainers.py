@@ -1,6 +1,4 @@
 import torch
-from torch import optim
-from torch.optim import lr_scheduler
 from torch import nn
 # from torch.nn import functional as F
 
@@ -9,6 +7,7 @@ from pytorch_lightning.core import LightningModule
 from .schedulers import DelayedScheduler
 from .losses import SmoothLoss
 from .datasets import actual_lbl_nums
+from .utils import get_module_attr
 
 
 class GeneralModule(LightningModule):
@@ -47,7 +46,7 @@ class GeneralModule(LightningModule):
                                       optimizer_idx, second_order_closure)
 
     def configure_optimizers(self):
-        omtimizer_class = getattr(optim, self.hparams['optimizer']['name'])
+        omtimizer_class = get_module_attr(self.hparams['optimizer']['name'])
         self.optimizer = omtimizer_class(self.parameters(),
                                          lr=self.hparams['learning_rate'],
                                          **self.hparams['optimizer']['params'])
@@ -59,8 +58,7 @@ class GeneralModule(LightningModule):
 
         optimizers = [self.optimizer, ]
 
-        scheduler_class = getattr(lr_scheduler,
-                                  self.hparams['scheduler']['name'])
+        scheduler_class = get_module_attr(self.hparams['scheduler']['name'])
 
         self.scheduler = scheduler_class(self.optimizer,
                                          **self.hparams['scheduler']['params'])
@@ -129,8 +127,10 @@ class PatchesModuleV1(GeneralModule):
 
         self.loss_weights = self.hparams['loss']['weights']
 
-        self.rgb_mean = torch.tensor(0.0, dtype=torch.float32)
-        self.rgb_std = torch.tensor(1.0, dtype=torch.float32)
+        self.rgb_mean = torch.tensor(hparams['dataset']['rgb_mean'],
+                                     dtype=torch.float32)
+        self.rgb_std = torch.tensor(hparams['dataset']['rgb_std'],
+                                    dtype=torch.float32)
 
     def _loss(self, o_masks, o_labels, o_imgs, masks, labels, imgs, n_imgs,
               provider):
