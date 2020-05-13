@@ -102,10 +102,13 @@ class GeneralModule(LightningModule):
         return {'log': o_dict}
 
     def validation_epoch_end(self, outputs):
-        keys = outputs[0].keys()
-        o_dict = {}
-        for k in keys:
-            o_dict[k] = sum([o[k] for o in outputs]) / len(outputs)
+        if len(outputs) > 0:
+            keys = outputs[0].keys()
+            o_dict = {}
+            for k in keys:
+                o_dict[k] = sum([o[k] for o in outputs]) / len(outputs)
+        else:
+            o_dict = {}
 
         return {'log': o_dict}
 

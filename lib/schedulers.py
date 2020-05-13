@@ -1,5 +1,5 @@
 from torch.optim.lr_scheduler import _LRScheduler
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ExponentialLR
 from warmup_scheduler import GradualWarmupScheduler
 
 
@@ -48,3 +48,12 @@ class DelayedScheduler(_LRScheduler):
                 self.after_scheduler.step(epoch - self.total_epoch)
         else:
             super(DelayedScheduler, self).step(epoch)
+
+
+class ExponentialLRWithMin(ExponentialLR):
+    def __init__(self, optimizer, gamma, eta_min, last_epoch=-1):
+        self.eta_min = eta_min
+        super().__init__(optimizer, gamma, last_epoch)
+
+    def get_lr(self):
+        return [max(lr, self.eta_min) for lr in super().get_lr()]

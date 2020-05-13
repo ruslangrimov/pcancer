@@ -60,9 +60,12 @@ def get_train_test_img_ids_split(test_size=0.2, random_state=42):
     img_ids = gr_by_id_df.index.values.tolist()
 
     img_ids.sort()
-    train_img_ids, test_img_ids = train_test_split(img_ids,
-                                                   test_size=test_size,
-                                                   random_state=random_state)
+    if test_size > 0:
+        train_img_ids, test_img_ids = \
+            train_test_split(img_ids, test_size=test_size,
+                             random_state=random_state)
+    else:
+        train_img_ids, test_img_ids = img_ids, []
 
     train_img_ids = [a for a in train_img_ids if a not in wrong_img_ids]
     test_img_ids = [a for a in test_img_ids if a not in wrong_img_ids]
