@@ -19,4 +19,6 @@ coverage.xml
 old_*/
 tmp/
 **/epochs*
-
+lightning_logs/
+Patches256TestRun/
+*.ckpt
