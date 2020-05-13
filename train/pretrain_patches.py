@@ -30,11 +30,15 @@ parser.add_argument('-w', dest='num_workers', type=int,
 
 args = parser.parse_args()
 
-exp_name = args.exp_name
+name_split = args.exp_name.split('.')
+exp_subfolder = name_split[0]
+exp_name = '.'.join(name_split[1:])
+
 num_workers = args.num_workers
 gpus = [args.gpu, ]
 
-exp_path = os.path.join(os.getcwd(), 'experiments_results', exp_name)
+exp_path = os.path.join(os.getcwd(), 'experiments_results', exp_subfolder,
+                        exp_name)
 os.makedirs(exp_path, exist_ok=True)
 init_script(os.path.join(exp_path, 'log.txt'))
 
@@ -87,7 +91,7 @@ module_params['log_train_every_batch'] = True
 module = call_function([module_name, module_params])
 
 logger = TensorBoardLogger(
-    'experiments_results', exp_name,
+    os.path.join(exp_subfolder, 'experiments_results'), exp_name,
 )
 # accumulate_grad_batches=1
 trainer = Trainer(logger, max_epochs=hparams['epochs'], gpus=gpus,

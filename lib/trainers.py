@@ -1,6 +1,11 @@
+import os
+import psutil
+
 import torch
 from torch import nn
-# from torch.nn import functional as F
+from torch.nn import functional as F
+
+from sklearn.metrics import cohen_kappa_score
 
 from pytorch_lightning.core import LightningModule
 
@@ -214,6 +219,108 @@ class PatchesModuleV1(GeneralModule):
             pr+'lbl_acc': float(lbl_acc),
             pr+'mask_acc': float(mask_acc),
             pr+'lr': lr
+        }
+
+        if is_train and self.log_train_every_batch:
+            return {'loss': loss, 'log': log_dict}
+        else:
+            return log_dict
+
+    def training_step(self, batch, batch_idx):
+        return self.step(batch, batch_idx, True)
+
+    def validation_step(self, batch, batch_idx):
+        return self.step(batch, batch_idx, False)
+
+    def _apply(self, fn):
+        super()._apply(fn)
+        self.rgb_mean = fn(self.rgb_mean)
+        self.rgb_std = fn(self.rgb_std)
+
+        return self
+
+
+class WSIModuleV1(GeneralModule):
+    def __init__(self, model, hparams, log_train_every_batch=False):
+        super().__init__(model, hparams, log_train_every_batch)
+        self.hparams = hparams
+        self.model = model
+        self.log_train_every_batch = log_train_every_batch
+
+        self.reg_loss = nn.MSELoss()
+
+        label_smoothing = self.hparams['loss']['label_smoothing']
+        self.class_loss = SmoothLoss(nn.KLDivLoss(), smoothing=label_smoothing,
+                                     one_hot_target=True)
+
+        self.loss_weights = self.hparams['loss']['weights']
+
+        self.rgb_mean = torch.tensor(hparams['dataset']['rgb_mean'],
+                                     dtype=torch.float32)
+        self.rgb_std = torch.tensor(hparams['dataset']['rgb_std'],
+                                    dtype=torch.float32)
+
+        self.process = psutil.Process(os.getpid())
+
+        self.max_lbl_nums = hparams['dataset']['classes']
+
+    @classmethod
+    def _accuracy(cls, output, target):
+        pred = output
+        eq = pred.eq(target.view_as(pred))
+        return eq.float().mean()
+
+    def step(self, batch, batch_idx, is_train):
+        # features, ys, xs, provider, isup_grade, gleason_score = batch
+        # features = features.mean(-1).mean(-1).transpose(1, -1)
+        features, ys, xs, provider, isup_grade, gleason_score = batch
+
+        # b = features.shape[0]
+
+        labels = isup_grade
+
+        labels_reg = labels[:, None].float()
+        labels_class = labels
+
+        o_labels_reg, o_labels_class = self.model(features, ys, xs)
+
+        o_labels_reg = torch.sigmoid(o_labels_reg) * self.max_lbl_nums - 0.5
+        o_labels_class = F.log_softmax(o_labels_class, dim=-1)
+
+        reg_loss = self.reg_loss(o_labels_reg, labels_reg)
+        class_loss = self.class_loss(o_labels_class, labels_class)
+
+        loss = (self.loss_weights['reg'] * reg_loss +
+                self.loss_weights['class'] * class_loss)
+
+        o_labels_reg = o_labels_reg.round().long().\
+            clamp(0, self.max_lbl_nums-1)
+        o_labels_class = o_labels_class.argmax(dim=-1)
+
+        acc_reg = self._accuracy(o_labels_reg, labels)
+        acc_class = self._accuracy(o_labels_class, labels)
+
+        qwk_reg = cohen_kappa_score(o_labels_reg.cpu().numpy(),
+                                    labels.cpu().numpy(),
+                                    weights="quadratic")
+        qwk_class = cohen_kappa_score(o_labels_class.cpu().numpy(),
+                                      labels.cpu().numpy(),
+                                      weights="quadratic")
+
+        lr = self.optimizer.param_groups[0]['lr']
+
+        pr = '' if is_train else 'val_'
+
+        log_dict = {
+            pr+'loss': loss,
+            pr+'reg_loss': float(reg_loss),
+            pr+'class_loss': float(class_loss),
+            pr+'acc_reg': float(acc_reg),
+            pr+'acc_class': float(acc_class),
+            pr+'qwk_reg': float(qwk_reg),
+            pr+'qwk_class': float(qwk_class),
+            pr+'lr': lr,
+            pr+'memory': self.process.memory_info().rss
         }
 
         if is_train and self.log_train_every_batch:
