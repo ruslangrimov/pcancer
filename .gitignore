@@ -19,6 +19,10 @@ coverage.xml
 old_*/
 tmp/
 **/epochs*
+
+# Artifacts of test experiments
 lightning_logs/
 Patches256TestRun/
+
+# Not store checkpoints. ToDo: Need to think on it
 *.ckpt
