@@ -11,10 +11,12 @@ wsi_csv_path = "/mnt/HDDData/pdata/train.csv"
 
 patches_path = "/mnt/SSDData/pdata/processed/patches_512/"
 patches_csv_path = "/mnt/SSDData/pdata/processed/patches_512.csv"
-patches_clean90_csv_path = "/mnt/SSDData/pdata/processed/patches_clean90_512.csv"
+patches_clean90_csv_path =\
+    "/mnt/SSDData/pdata/processed/patches_clean90_512.csv"
 
 patches_pkl_path = "/mnt/SSDData/pdata/processed/patches_512.pkl"
-patches_clean90_pkl_path = "/mnt/SSDData/pdata/processed/patches_clean90_512.pkl"
+patches_clean90_pkl_path =\
+    "/mnt/SSDData/pdata/processed/patches_clean90_512.pkl"
 
 # Here is the list of tiff files which are probably corrupt
 wrong_img_ids_path = '/mnt/SSDData/pdata/processed/wrong_img_ids.pkl'
