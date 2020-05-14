@@ -9,6 +9,21 @@ import linecache
 import importlib
 
 import numpy as np
+import pandas as pd
+from subprocess import Popen, PIPE
+
+
+SYMBOLS = {
+    'customary': ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
+    'customary_ext': ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta', 'exa',
+                      'zetta', 'iotta'),
+    'iec': ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi', 'Yi'),
+    'iec_60027_2': ('BiB', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB',
+                    'YiB'),
+    'iec_ext': ('byte', 'kibi', 'mebi', 'gibi', 'tebi', 'pebi', 'exbi',
+                'zebi', 'yobi'),
+}
+
 
 # OS utils
 
@@ -74,6 +89,8 @@ def get_pretrained_model(get_model_fn, fn_args, checkpoint, device,
     tmp = torch.load(checkpoint, map_location=device)
 
     module = nn.Sequential()
+    if isinstance(get_model_fn, str):
+        get_model_fn = get_module_attr(get_model_fn)
     model = get_model_fn(**fn_args)
     module.add_module('model', model)
     module.to(device)
@@ -135,3 +152,55 @@ def call_function(fn):
     function = get_module_attr(full_name)
 
     return function(**params)
+
+
+def human2bytes(s):
+    '''Convert string with symbolic designation to a number of bytes'''
+    s = s.strip()
+    init = s
+    num = ""
+    while s and s[0:1].isdigit() or s[0:1] == '.':
+        num += s[0]
+        s = s[1:]
+    num = float(num)
+    letter = s.strip()
+
+    for _, sset in SYMBOLS.items():
+        if letter in sset:
+            break
+    else:
+        if letter == 'k':
+            # treat 'k' as an alias for 'K' as per: http://goo.gl/kTQMs
+            sset = SYMBOLS['customary']
+            letter = letter.upper()
+        else:
+            raise ValueError("can't interpret {}".format(init))
+    prefix = {sset[0]: 1}
+    for i, s in enumerate(sset[1:]):
+        prefix[s] = 1 << (i + 1) * 10
+    return int(num * prefix[letter])
+
+
+def get_GPUs_info(params=['uuid', 'name', 'memory.total', 'memory.used',
+                          'memory.free']):
+    '''
+    Return list of dictionaries with the requested information about GPUs.
+    Use nvidia-smi --help-query-gpu to see more info about available
+    parameters.
+    '''
+    proc = Popen(['nvidia-smi', '--format=csv', '--query-gpu=' +
+                  ','.join(params)], stdout=PIPE)
+    df = pd.read_csv(proc.stdout)
+    exit_code = proc.wait()
+
+    if exit_code != 0:
+        raise OSError('nvidia-smi exited with code {}'.format(exit_code))
+
+    def parse_s(s):
+        try:
+            return human2bytes(s)
+        except:
+            return s.strip()
+
+    return [{pn: parse_s(r.iloc[n]) for n, pn in enumerate(params)}
+            for i, r in df.iterrows()]
