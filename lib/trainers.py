@@ -242,6 +242,8 @@ class PatchesModuleV1(GeneralModule):
 
 class WSIModuleV1(GeneralModule):
     def __init__(self, model, hparams, log_train_every_batch=False):
+        assert log_train_every_batch is False, "Not implemented"
+
         super().__init__(model, hparams, log_train_every_batch)
         self.hparams = hparams
         self.model = model
@@ -297,16 +299,6 @@ class WSIModuleV1(GeneralModule):
             clamp(0, self.max_lbl_nums-1)
         o_labels_class = o_labels_class.argmax(dim=-1)
 
-        acc_reg = self._accuracy(o_labels_reg, labels)
-        acc_class = self._accuracy(o_labels_class, labels)
-
-        qwk_reg = cohen_kappa_score(o_labels_reg.cpu().numpy(),
-                                    labels.cpu().numpy(),
-                                    weights="quadratic")
-        qwk_class = cohen_kappa_score(o_labels_class.cpu().numpy(),
-                                      labels.cpu().numpy(),
-                                      weights="quadratic")
-
         lr = self.optimizer.param_groups[0]['lr']
 
         pr = '' if is_train else 'val_'
@@ -315,18 +307,56 @@ class WSIModuleV1(GeneralModule):
             pr+'loss': loss,
             pr+'reg_loss': float(reg_loss),
             pr+'class_loss': float(class_loss),
-            pr+'acc_reg': float(acc_reg),
-            pr+'acc_class': float(acc_class),
-            pr+'qwk_reg': float(qwk_reg),
-            pr+'qwk_class': float(qwk_class),
             pr+'lr': lr,
-            pr+'memory': self.process.memory_info().rss
+            pr+'memory': self.process.memory_info().rss,
+
+            'labels': labels.cpu(),
+            'o_labels_reg': o_labels_reg.cpu(),
+            'o_labels_class': o_labels_class.cpu(),
         }
 
         if is_train and self.log_train_every_batch:
             return {'loss': loss, 'log': log_dict}
         else:
             return log_dict
+
+    def cum_steps(self, outputs, is_train):
+        list_labels = []
+        list_o_labels_reg = []
+        list_o_labels_class = []
+        for output in outputs:
+            list_labels.append(output['labels'])
+            list_o_labels_reg.append(output['o_labels_reg'])
+            list_o_labels_class.append(output['o_labels_class'])
+            for k in ['labels', 'o_labels_reg', 'o_labels_class']:
+                del output[k]
+
+        labels = torch.cat(list_labels)
+        o_labels_reg = torch.cat(list_o_labels_reg)
+        o_labels_class = torch.cat(list_o_labels_class)
+
+        if is_train:
+            o_dict = super().training_epoch_end(outputs)['log']
+        else:
+            o_dict = super().validation_epoch_end(outputs)['log']
+
+        pr = '' if is_train else 'val_'
+
+        o_dict[pr+'acc_reg'] = self._accuracy(o_labels_reg, labels)
+        o_dict[pr+'acc_class'] = self._accuracy(o_labels_class, labels)
+        o_dict[pr+'qwk_reg'] = cohen_kappa_score(o_labels_reg, labels,
+                                                 weights="quadratic")
+        o_dict[pr+'qwk_class'] = cohen_kappa_score(o_labels_class, labels,
+                                                   weights="quadratic")
+        return o_dict
+
+    def training_epoch_end(self, outputs):
+        o_dict = self.cum_steps(outputs, True)
+        return {'log': o_dict}
+
+    def validation_epoch_end(self, outputs):
+        o_dict = self.cum_steps(outputs, False)
+        return {'log': o_dict}
 
     def training_step(self, batch, batch_idx):
         return self.step(batch, batch_idx, True)
