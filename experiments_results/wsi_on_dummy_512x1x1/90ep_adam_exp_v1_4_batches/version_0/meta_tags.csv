@@ -1,0 +1,79 @@
+key,value
+module/name,lib.trainers.WSIModuleV1
+module/params/model/name,lib.models.wsi_resnets.Resnet_512x1x1
+module/params/model/params/backbone,resnet18
+module/params/model/params/backbone_features,512
+module/params/model/params/classes,6
+module/params/model/params/features_do,0
+batch_size,64
+dataset/dataloader,dummy
+dataset/rgb_mean,"[[[[0.88]]
+
+  [[0.76]]
+
+  [[0.84]]]]"
+dataset/rgb_std,"[[[[0.15]]
+
+  [[0.26]]
+
+  [[0.18]]]]"
+dataset/classes,6
+dataset/precalc_epochs,4
+optimizer/name,torch.optim.Adam
+optimizer/params/weight_decay,0.0001
+loss/weights/reg,0.5
+loss/weights/class,4.5
+loss/label_smoothing,0.1
+epochs,90
+learning_rate,0.00025
+scheduler/name,torch.optim.lr_scheduler.ExponentialLR
+scheduler/params/gamma,0.96
+scheduler/interval,epoch
+source_code,"import os, sys
+sys.path.append(os.path.dirname(__file__))
+import _default as d
+
+from lib.datasets import (patches_rgb_mean_av1, patches_rgb_std_av1,
+                          max_lbl_nums)
+
+d.epochs = 90
+d.warmup_steps = 0
+
+hparams = {
+    'epochs': d.epochs,
+    'learning_rate': 0.001 * d.batch_size / 256,
+    'optimizer': {
+        'name': 'torch.optim.Adam',
+        'params': {
+            'weight_decay': 1e-4
+        }
+    },
+    'dataset': {
+        'dataloader': 'dummy',
+        'rgb_mean': patches_rgb_mean_av1,
+        'rgb_std': patches_rgb_std_av1,
+        'classes': max_lbl_nums,
+        'precalc_epochs': 4,
+        'train_test_split': {},
+    },
+    'scheduler': {
+        'name': 'torch.optim.lr_scheduler.ExponentialLR',
+        'params': {
+            'gamma': 0.96,
+        },
+        'interval': 'epoch'
+    },
+    'source_code': open(__file__, 'rt').read()
+}
+
+d.hparams.update(hparams)
+
+
+def get_hrapams():
+    return d.get_hrapams()
+
+
+def update_hrapams(hparams, steps_in_epoh):
+    return d.update_hrapams(hparams, steps_in_epoh)
+"
+steps_in_epoh,132
