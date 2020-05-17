@@ -54,7 +54,7 @@ def get_hrapams():
 
 
 def update_hrapams(hparams, steps_in_epoh):
-    hparams['steps_in_batch'] = steps_in_epoh
+    hparams['steps_in_epoh'] = steps_in_epoh
     if 'T_max' in hparams['scheduler']['params']:
         hparams['scheduler']['params']['T_max'] = (epochs * steps_in_epoh -
                                                    warmup_steps)

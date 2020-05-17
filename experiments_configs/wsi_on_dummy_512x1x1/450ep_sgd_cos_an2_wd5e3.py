@@ -2,25 +2,26 @@ import os, sys
 sys.path.append(os.path.dirname(__file__))
 import _default as d
 
-d.epochs = 90
+d.epochs = 450
 d.warmup_steps = 0
 
 hparams = {
     'epochs': d.epochs,
-    'learning_rate': 0.01 * d.batch_size / 256,
+    'learning_rate': 0.05 * d.batch_size / 256,
     'optimizer': {
         'name': 'torch.optim.SGD',
         'params': {
             'momentum': 0.9,
-            'weight_decay': 1e-4
+            'weight_decay': 5e-3
         }
     },
     'scheduler': {
-        'name': 'torch.optim.lr_scheduler.ExponentialLR',
+        'name': 'torch.optim.lr_scheduler.CosineAnnealingWarmRestarts',
         'params': {
-            'gamma': 0.92,
+            'T_0': 3960,
+            'T_mult': 2
         },
-        'interval': 'epoch'
+        'interval': 'step'
     },
     'source_code': open(__file__, 'rt').read()
 }
