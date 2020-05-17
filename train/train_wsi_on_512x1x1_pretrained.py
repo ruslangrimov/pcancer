@@ -126,8 +126,10 @@ module = call_function([module_name, module_params])
 logger = TensorBoardLogger(
     os.path.join('experiments_results', exp_subfolder), exp_name,
 )
-# accumulate_grad_batches=1
+
+acc_grad = hparams.get('accumulate_grad_batches', 1)
 trainer = Trainer(logger, max_epochs=hparams['epochs'], gpus=gpus,
+                  accumulate_grad_batches=acc_grad,
                   fast_dev_run=False, num_sanity_val_steps=0)
 
 trainer.fit(module, train_loader, val_loader)
