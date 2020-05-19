@@ -61,6 +61,9 @@ def process_wsi(df_row):
                     patch = imread(t_patch_path)
                     mask_patch = mask_patches[y, x, ..., 0]
 
+                    !!!
+                    # ToDo: add checking background percentage from notebook here
+
                     if patch.mean() != 255:
                         row = [img_id, df_row.data_provider, df_row.isup_grade,
                                df_row.gleason_score, y, x]

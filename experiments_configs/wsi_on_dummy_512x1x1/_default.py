@@ -32,6 +32,8 @@ hparams = {
         'classes': max_lbl_nums,
         'precalc_epochs': 50,
         'train_test_split': {},
+        'train_batch_path': '/mnt/SSDData/pdata/processed/pretrained/train/{}/',
+        'test_batch_path': '/mnt/SSDData/pdata/processed/pretrained/val/',
     },
     'optimizer': {
         'name': 'torch.optim.Adam',

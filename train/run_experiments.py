@@ -21,7 +21,7 @@ def main(exp_subfolder, gpu):
             else:
                 print(f"Launching experimen {experiment} on gpu {gpu}")
                 p = Popen([sys.executable, "-u",
-                           "train/train_wsi_on_512x1x1_pretrained.py",
+                           "train/train_wsi_on_1x1_pretrained.py",
                            "-g", str(gpu),
                            "-e", f"{exp_subfolder}.{experiment}"],
                           # stdout=subprocess.PIPE,

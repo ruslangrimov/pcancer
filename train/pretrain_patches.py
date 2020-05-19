@@ -44,7 +44,8 @@ init_script(os.path.join(exp_path, 'log.txt'))
 
 logging.info("Started")
 
-e_mod = importlib.import_module('experiments_configs.' + exp_name)
+e_mod = importlib.\
+    import_module(f'experiments_configs.{exp_subfolder}.{exp_name}')
 
 hparams = e_mod.get_hrapams()
 
@@ -91,7 +92,7 @@ module_params['log_train_every_batch'] = True
 module = call_function([module_name, module_params])
 
 logger = TensorBoardLogger(
-    os.path.join(exp_subfolder, 'experiments_results'), exp_name,
+    os.path.join('experiments_results', exp_subfolder), exp_name,
 )
 # accumulate_grad_batches=1
 trainer = Trainer(logger, max_epochs=hparams['epochs'], gpus=gpus,
