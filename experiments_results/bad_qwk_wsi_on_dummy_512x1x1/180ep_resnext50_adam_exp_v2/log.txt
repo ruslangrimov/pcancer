@@ -1,2 +1,0 @@
-2020-05-14 09:26:11,643 - root - INFO - Started
-2020-05-14 15:12:45,496 - root - INFO - Finished
