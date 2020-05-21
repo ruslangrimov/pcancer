@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import albumentations as alb
 import staintools
@@ -94,6 +96,7 @@ def normalize_he(img, mask):
 
 
 def augment_he(imgs, mask):
+    # Concatenate imgs in one line and process it together to apply the same augmentations to all
     raise NotImplementedError("Not implemented for wsi yet")
 
 
@@ -146,8 +149,17 @@ def augment_v1(img, mask):
     return _augment(img, mask, _aug_v1)
 
 
+def augment_v1_he_clr_mix(img, mask):
+    return augment_he_D8 if random.random() > 0.5 else augment_v1(img, mask)
+
+
 def augment_v1_wo_blur(img, mask):
     return _augment(img, mask, _aug_v1_wo_blur)
+
+
+def augment_v1_he_clr_wo_blur_mix(img, mask):
+    return (augment_he_D8 if random.random() > 0.5 else
+            augment_v1_wo_blur(img, mask))
 
 
 def augment_v1_clr_only(imgs):

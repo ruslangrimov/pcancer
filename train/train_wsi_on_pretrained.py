@@ -44,7 +44,10 @@ exp_name = '.'.join(name_split[1:])
 num_workers = args.num_workers
 gpus = [args.gpu, ]
 
-exp_path = os.path.join(os.getcwd(), 'experiments_results', exp_subfolder,
+# exp_path = os.path.join(os.getcwd(), 'experiments_results', exp_subfolder,
+#                         exp_name)
+exp_path = os.path.join('/mnt/HDDData/notebooks/pcancer/',
+                        'experiments_results', exp_subfolder,
                         exp_name)
 os.makedirs(exp_path, exist_ok=True)
 init_script(os.path.join(exp_path, 'log.txt'))
@@ -72,10 +75,13 @@ if hparams['dataset']['dataloader'] == 'dummy':
 
     train_loader = WSIPatchesDummyDataloader(train_batch_path,
                                              precalc_epochs=hparams['dataset']
-                                             ['precalc_epochs'], shuffle=True)
+                                             ['precalc_epochs'],
+                                             batch_size=hparams['batch_size'],
+                                             shuffle=True)
     val_loader = WSIPatchesDummyDataloader(test_batch_path,
                                            precalc_epochs=hparams['dataset']
                                            ['precalc_epochs'],
+                                           batch_size=hparams['batch_size'],
                                            shuffle=False)
 else:
     patches_device = torch.device(f'cuda:{args.patches_gpu}')
@@ -124,7 +130,8 @@ module_params['log_train_every_batch'] = False
 module = call_function([module_name, module_params])
 
 logger = TensorBoardLogger(
-    os.path.join('experiments_results', exp_subfolder), exp_name,
+    os.path.join('/mnt/HDDData/notebooks/pcancer/',
+                 'experiments_results', exp_subfolder), exp_name,
 )
 
 acc_grad = hparams.get('accumulate_grad_batches', 1)

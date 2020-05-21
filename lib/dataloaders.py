@@ -152,17 +152,25 @@ class WSIPatchesDatasetRaw(torch.utils.data.Dataset):
 
 class WSIPatchesDummyDataloader():
     def __init__(self, batch_path, precalc_epochs,
-                 shuffle=False):
+                 batch_size=64, shuffle=False):
         self.batch_path = batch_path
         self.epoch = 0
         self.precalc_epochs = precalc_epochs
+        self.batch_size = batch_size
         self.shuffle = shuffle
 
-        batch_path = self.batch_path.format(self.epoch % 10)
+        batch_path = self.batch_path.format(0)
         self.len = len(os.listdir(batch_path))
 
     def __len__(self):
-        return self.len
+        idx = self.len - 1
+        batch_path = self.batch_path.format(0)
+        last_batch = torch.load(os.path.join(batch_path, f"batch{idx}.pth"),
+                                map_location='cpu')
+        math.ceil(last_batch[0].shape[0] / self.batch_size)
+
+        return ((self.len - 1) * math.ceil(64 / self.batch_size) +
+                math.ceil(last_batch[0].shape[0] / self.batch_size))
 
     def __iter__(self):
         return self.produce_batches()
@@ -178,7 +186,11 @@ class WSIPatchesDummyDataloader():
             batch = torch.load(os.path.join(batch_path, f"batch{idx}.pth"),
                                map_location='cpu')
 
-            yield batch
+            if batch[0].shape[0] <= self.batch_size:
+                yield batch
+            else:
+                for b in range(0, batch[0].shape[0], self.batch_size):
+                    yield tuple(a[b:b+self.batch_size] for a in batch)
 
         self.epoch += 1
 

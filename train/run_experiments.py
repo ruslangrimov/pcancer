@@ -14,14 +14,15 @@ def main(exp_subfolder, gpu):
 
         for experiment in experiments:
             print(f"Experiment {experiment}")
-            result_path = os.path.join('experiments_results', exp_subfolder,
+            result_path = os.path.join('/mnt/HDDData/notebooks/pcancer/',
+                                       'experiments_results', exp_subfolder,
                                        experiment)
             if os.path.isdir(result_path):
-                print(f"Experiment is processed already or in process")
+                print("Experiment is processed already or in process")
             else:
                 print(f"Launching experimen {experiment} on gpu {gpu}")
                 p = Popen([sys.executable, "-u",
-                           "train/train_wsi_on_1x1_pretrained.py",
+                           "train/train_wsi_on_pretrained.py",
                            "-g", str(gpu),
                            "-e", f"{exp_subfolder}.{experiment}"],
                           # stdout=subprocess.PIPE,

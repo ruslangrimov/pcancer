@@ -110,3 +110,77 @@ class FeaturesMap(nn.Module):
             res_f_maps.append(res_f_map)
 
         return torch.stack(res_f_maps)
+
+
+class TiledFeaturesMap(nn.Module):
+    def __init__(self, f_channels=512, f_size=1,
+                 t_sz=9, t_step=6, t_cut=2):
+        super().__init__()
+
+        self.f_size = f_size
+        self.f_channels = f_channels
+        self.t_sz = t_sz
+        self.t_step = t_step
+        self.t_cut = t_cut
+
+    def forward(self, features, ys, xs, validation=None):
+        if validation is None:
+            validation = not self.training
+
+        f_tiles = []
+        f_ns = []
+
+        for b in range(features.shape[0]):
+            y_min, x_min = ys[b].min(), xs[b].min()
+            y_max, x_max = ys[b].max(), xs[b].max()
+
+            if not validation:
+                y_rnd = random.randint(0, self.t_step)
+                x_rnd = random.randint(0, self.t_step)
+            else:
+                y_rnd, x_rnd = 0, 0
+
+            r_mask = ys[b] > -1
+
+            x_map = torch.zeros((y_max-y_min+1+self.t_sz+y_rnd,
+                                 x_max-x_min+1+self.t_sz+x_rnd,
+                                 self.f_channels, self.f_size, self.f_size),
+                                dtype=features.dtype, device=features.device)
+
+            x_map[ys[b, r_mask]-y_min+y_rnd, xs[b, r_mask]-x_min+x_rnd] =\
+                features[b, r_mask]
+
+            x_tiles = x_map.unfold(0, self.t_sz, self.t_step).\
+                unfold(1, self.t_sz, self.t_step)
+
+            f_t_idxs = x_tiles[..., self.t_cut:-self.t_cut,
+                               self.t_cut:-self.t_cut].\
+                reshape(x_tiles.shape[:2]+(-1,)).sum(-1)
+
+            if (f_t_idxs > 0).sum() == 0:  # if no tiles at all
+                f_t_idxs = x_tiles.reshape(x_tiles.shape[:2]+(-1,)).sum(-1)
+
+            f_tiles.append(x_tiles[f_t_idxs > 0])
+            f_ns.extend([b, ]*(f_t_idxs > 0).sum().item())
+
+        f_tiles = torch.cat(f_tiles, dim=0)
+        f_ns = torch.tensor(f_ns)
+
+        f_tiles = f_tiles.permute(0, 1, 4, 2, 5, 3).\
+            reshape(f_tiles.shape[:2] +
+                    (self.t_sz*self.f_size, self.t_sz*self.f_size))
+
+        if not validation:
+            for n in range(len(f_tiles)):
+                f_tile = f_tiles[n]
+                if random.random() > 0.5:
+                    f_tile = torch.flip(f_tile, [-1])
+
+                if random.random() > 0.5:
+                    f_tile = torch.flip(f_tile, [-2])
+
+                if random.random() > 0.5:
+                    f_tile = f_tile.transpose(-1, -2)
+                f_tiles[n] = f_tile
+
+        return f_ns, f_tiles

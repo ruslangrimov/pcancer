@@ -4,6 +4,7 @@ from torch import nn
 import sys
 import logging
 from io import StringIO
+import collections.abc
 import traceback
 import linecache
 import importlib
@@ -23,6 +24,15 @@ SYMBOLS = {
     'iec_ext': ('byte', 'kibi', 'mebi', 'gibi', 'tebi', 'pebi', 'exbi',
                 'zebi', 'yobi'),
 }
+
+
+def update_r(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = update_r(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 
 # OS utils
