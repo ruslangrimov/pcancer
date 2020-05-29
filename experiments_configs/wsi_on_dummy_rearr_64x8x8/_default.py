@@ -7,23 +7,19 @@ epochs = -1
 
 warmup_epochs = 0
 warmup_steps = -1
-batch_size = 16
+batch_size = 64
 
 hparams = {
     'module': {
         'name': 'lib.trainers.WSIModuleV1',
         'params': {
             'model': {
-                'name': 'lib.models.wsi_resnets.ResnetTiled_64x8x8',
+                'name': 'lib.models.wsi_resnets.RearrangedResnet_64x8x8',
                 'params': {
                     'backbone': 'resnet18',
                     'backbone_features': 512,
                     'classes': max_lbl_nums,
                     'features_do': 0,
-                    'f_size': 8,
-                    't_sz': 9,
-                    't_step': 6,
-                    't_cut': 2,
                 }
             },
         },

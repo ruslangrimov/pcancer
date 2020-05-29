@@ -9,7 +9,8 @@ def main(exp_subfolder, only_unprocessed):
                    if not e.startswith('_')]
 
     for experiment in experiments:
-        result_path = os.path.join('experiments_results', exp_subfolder,
+        result_path = os.path.join('/mnt/HDDData/notebooks/pcancer/',
+                                   'experiments_results', exp_subfolder,
                                    experiment)
         processed = os.path.isdir(result_path)
         if only_unprocessed:
@@ -18,9 +19,9 @@ def main(exp_subfolder, only_unprocessed):
         else:
             print(f"Experiment {experiment}")
             if processed:
-                print(f"Processed")
+                print("Processed")
             else:
-                print(f"Unprocessed")
+                print("Unprocessed")
 
 
 if __name__ == '__main__':
